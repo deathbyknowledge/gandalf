@@ -1,0 +1,37 @@
+<mediawiki xlmns="https://google.com">
+  <siteinfo>
+    <sitename>Wikipedia</sitename>
+    <dbname>enwiki</dbname>
+    <namespaces>
+      <namespace key="-2" case="first-letter">Media</namespace>
+      <namespace key="0" case="first-letter"/>
+    </namespaces>
+  </siteinfo>
+  <page>
+    <title>Anarchism</title>
+    <ns>0</ns>
+    <id>12</id>
+    <revision>
+      <id>1126623531</id>
+      <parentid>1124683133</parentid>
+      <timestamp>2022-12-10T09:46:33Z</timestamp>
+
+      <text>Hello
+World!
+      </text>
+      <sha1>9ntpoavlet4i1yu6wpq8fmibx1yfkev</sha1>
+    </revision>
+  </page>
+  <page>
+    <title>Afghanistan</title>
+    <ns>0</ns>
+    <id>18</id>
+    <revision>
+      <id>783865299</id>
+      <parentid>1124683133</parentid>
+      <timestamp>2022-12-10T09:46:33Z</timestamp>
+      <text>Afghanistan yes</text>
+      <sha1>differentsha</sha1>
+    </revision>
+  </page>
+</mediawiki>
