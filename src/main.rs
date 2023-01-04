@@ -1,86 +1,71 @@
+mod schema;
+mod dump;
+mod page;
+mod index;
+
+const DB_PATH: &str = "/opt/gandalf/";
+const HELP_TEXT: &str = "Usage: `gandalf [subcommand] [..OPTIONS]`
+Valid subcommands are 'init'";
+
 use std::fs::File;
-use std::io::{self, Read, prelude::*};
+use std::io::{Read, prelude::*};
 use std::io::Cursor;
-use std::os::unix::prelude::FileExt;
 use capnp::serialize_packed;
 use roxmltree::Document;
+use std::collections::HashMap;
 
-pub mod schema {
-  pub mod page_capnp {
-    include!(concat!(env!("OUT_DIR"), "/page_capnp.rs"));
+fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    if let Some(command) = args.get(1) {
+      match command.as_str() {
+        "init" => init(),
+        "start" => start(),
+        "get" => get(),
+        "help" => println!("{HELP_TEXT}"),
+        _ => println!("See usage with `gandalf help`"),
+      }
+    } else {
+      println!("See usage with `gandalf help`")
+    }
+}
+
+fn init() {
+    let mut index = index::Index::new();
+    let offsets = index.init_from_and_count("../new/enwiki-latest-pages-articles-multistream-index.txt".to_string()).expect("error init index");
+    let dp = dump::DumpProcessor::new("../new/enwiki-latest-pages-articles-multistream.xml.bz2".to_string());
+    dp.setup_db(&offsets).expect("error setup db");
+}
+
+fn get() {
+    read_by_id(3821);
+}
+
+fn start() {
+    let mut index = index::Index::new();
+    index.init_from("../new/enwiki-latest-pages-articles-multistream-index.txt".to_string()).expect("error init index");
+}
+
+fn read_by_id(id: u32) {
+  use schema::page_capnp::page;
+  let mut file = File::open(DB_PATH.to_string() + &id.to_string()).expect("error opening file"); 
+  let mut buffer = Vec::new();
+  file.read_to_end(&mut buffer).expect("error reading file");
+  let mut d = flate2::read::ZlibDecoder::new(&buffer[..]);
+  let mut decompressed = Vec::new();
+  d.read_to_end(&mut decompressed).expect("failed to decompress");
+  let cursor = Cursor::new(decompressed);
+  let reader = std::io::BufReader::new(cursor);
+  let message_reader = serialize_packed::read_message(
+      reader,
+      ::capnp::message::ReaderOptions::new(),
+  ).unwrap();
+  if let Ok(page) = message_reader.get_root::<page::Reader>() {
+    println!("ID {}:\n  Title is {}\n  Content is {}", page.get_id(), page.get_title().unwrap(), page.get_content().unwrap());
   }
 }
 
 
-fn main() {
-    let bytes = read_bytes_from_file( "../new/enwiki-latest-pages-articles-multistream.xml.bz2", 602, 658112).unwrap();
-    let mut contents = decompress_to_string(bytes);
-    contents = "<document>".to_string() + contents.as_str() + "</document>";
 
-    // XML parsing
-    let doc = Document::parse(contents.as_str()).unwrap();
-    let mut pages: Vec<TestPage> = Vec::new();
-    for node in doc.descendants() {
-        if let Ok(page) = node_to_page(node) {
-            pages.push(page);
-        }
-    }
-    let page = &pages[1];
-    let xml = page.to_xml();
-    let msg = page.to_message();
-    let compressed = compress(&msg);
-    println!("{} bytes in XML and {} bytes in Capn'Proto", xml.len(), compressed.len());
-}
-
-fn node_to_page(node: roxmltree::Node) -> Result<TestPage, String> {
-    if node.is_element() {
-        if node.tag_name() == "page".into() {
-            let mut page = TestPage{id: 0, title: String::new(), content: String::new()};
-            for child in node.children() {
-                if child.tag_name() == "id".into() {
-                    page.id = child.text().unwrap().parse().unwrap();
-                } else if child.tag_name() == "title".into() {
-                    page.title = child.text().unwrap().to_string();
-                } else if child.tag_name() == "revision".into() {
-                    let txt = child.children().find(|ch| ch.tag_name() == "text".into()).unwrap();
-                    page.content = txt.text().unwrap().to_string();
-                }
-            }
-            return Ok(page);
-        }
-    }
-    Err("Node is not page".to_string())
-
-}
-
-fn read_bytes_from_file(file_path: &str, skip_bytes: u64, num_bytes: u64) -> io::Result<Vec<u8>> {
-    let file = File::open(file_path)?;
-    let mut bytes = vec![0u8; num_bytes.try_into().unwrap()];
-    file.read_exact_at(&mut bytes, skip_bytes)?;
-    Ok(bytes)
-}
-
-fn decompress_to_string(bytes: Vec<u8>) -> String {
-    // A Cursor allows us to create a BufReader from a Vec<u8>
-    let cursor = Cursor::new(bytes);
-    let reader = std::io::BufReader::new(cursor);
-    let mut decompressor = bzip2::read::BzDecoder::new(reader);
-    let mut contents = String::new();
-    decompressor.read_to_string(&mut contents).unwrap();
-    
-    // store the uncompressed contents in a file
-    if cfg!(debug_assertions) {
-        let mut file = File::create("/tmp/wiki-stream.xml").unwrap();
-        file.write_all(contents.as_bytes()).unwrap();
-    }
-    contents
-}
-
-fn compress(data: &[u8]) -> Vec<u8> {
-    let mut e = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
-    e.write_all(data).expect("Failed to write data");
-    e.finish().expect("Failed to finish encoding")
-}
 
 #[derive(Debug)]
 struct TestPage {
@@ -90,11 +75,6 @@ struct TestPage {
 }
 
 impl TestPage {
-
-    fn to_xml(&self) -> String {
-        format!("<page>\n<id>{}</id>\n<title>{}</title>\n<content>{}</content>",
-                self.id, self.title, self.content)
-    }
 
     fn to_message(&self) -> Vec<u8> {
         use schema::page_capnp::page;

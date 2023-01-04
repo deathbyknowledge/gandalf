@@ -76,6 +76,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "gandalf"
+version = "0.1.0"
+dependencies = [
+ "bzip2",
+ "capnp",
+ "capnpc",
+ "flate2",
+ "roxmltree",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.139"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -103,17 +114,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fb6d47b59770b0ae88c7f270c68502832ec14d8c7ab5f7a584f204bb76dbfd8e"
 dependencies = [
  "xmlparser",
-]
-
-[[package]]
-name = "userv"
-version = "0.1.0"
-dependencies = [
- "bzip2",
- "capnp",
- "capnpc",
- "flate2",
- "roxmltree",
 ]
 
 [[package]]

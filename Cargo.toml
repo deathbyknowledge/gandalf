@@ -1,5 +1,6 @@
 [package]
-name = "userv"
+name = "gandalf"
+description = "No one handles Wisdom better than Gandalf"
 version = "0.1.0"
 edition = "2021"
 build = "build.rs"
