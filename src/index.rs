@@ -18,12 +18,11 @@ impl Index {
 
         println!("Generating index from file...");
         for line in reader.lines() {
-            if let Ok(l) = line {
-                let values: Vec<&str> = l.split(":").collect();
-                let page_id: u32 = values[1].parse().unwrap();
-                let page_title = values[2].to_string();
-                self.raw_index.insert(page_title, page_id);
-            }
+            let l = line.expect("error reading line");
+            let values: Vec<&str> = l.split(':').collect();
+            let page_id: u32 = values[1].parse().unwrap();
+            let page_title = values[2].to_string();
+            self.raw_index.insert(page_title, page_id);
         }
         println!("Index len is {}", self.raw_index.len()); 
         Ok(())
@@ -39,20 +38,19 @@ impl Index {
 
         println!("Generating index from file...");
         for line in reader.lines() {
-            if let Ok(l) = line {
-                let values: Vec<&str> = l.split(":").collect();
-                // Values are encoded as OFFSET:PAGE_ID:PAGE_TITLE
-                let offset: u64 = values[0].parse().unwrap();
-                let page_id: u32 = values[1].parse().unwrap();
-                let page_title = values[2].to_string();
+            let l = line.expect("error reading line");
+            let values: Vec<&str> = l.split(':').collect();
+            // Values are encoded as OFFSET:PAGE_ID:PAGE_TITLE
+            let offset: u64 = values[0].parse().unwrap();
+            let page_id: u32 = values[1].parse().unwrap();
+            let page_title = values[2].to_string();
 
-                // Insert the new entry in the index
-                self.raw_index.insert(page_title, page_id);
+            // Insert the new entry in the index
+            self.raw_index.insert(page_title, page_id);
 
-                match offsets.get(offsets.len() - 1) {
-                    Some(current) => if offset != *current {offsets.push(offset)},
-                    None => offsets.push(offset),
-                }
+            match offsets.last() {
+                Some(current) => if offset != *current {offsets.push(offset)},
+                None => offsets.push(offset),
             }
         }
         println!("Offsets len is {}", offsets.len()); 

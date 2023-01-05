@@ -6,9 +6,6 @@ use std::io::{self, Read, prelude::*};
 use roxmltree::Document;
 
 use crate::page::Page;
-use crate::schema::page_capnp::page;
-
-const DB_PATH: &str = "/opt/gandalf/";
 
 
 /// Read a stream from a multi-stream dump file. Start at position `offset`
@@ -49,7 +46,7 @@ pub struct DumpProcessor {
 
 impl DumpProcessor {
     pub fn new(dump_path: String ) -> Self {
-        Self {dump_path, root_path: DB_PATH.to_string()}
+        Self {dump_path, root_path: crate::DB_PATH.to_string()}
     }
 
     /// Iterate over the offsets.
@@ -67,8 +64,8 @@ impl DumpProcessor {
             let doc = Document::parse(contents.as_str()).unwrap();
             for node in doc.descendants() {
                 if let Ok(page) = node_to_page(node) {
-                    let mut file = File::create(DB_PATH.to_string() + page.get_id().to_string().as_str()).expect("Error db file");
-                    let compressed = compress(&page.to_bytes_packed());
+                    let mut file = File::create(self.root_path.to_string() + page.get_id().to_string().as_str()).expect("Error db file");
+                    let compressed = compress(&page.into_bytes_packed());
                     file.write_all(&compressed).unwrap();
                 }
             }
@@ -82,21 +79,19 @@ impl DumpProcessor {
 
 fn node_to_page(node: roxmltree::Node) -> Result<Page, String> {
     // XML parsing
-    if node.is_element() {
-        if node.tag_name() == "page".into() {
-            let mut page = Page::new();
-            for child in node.children() {
-                if child.tag_name() == "id".into() {
-                    page.set_id(child.text().unwrap().parse().unwrap());
-                } else if child.tag_name() == "title".into() {
-                    page.set_title(child.text().unwrap());
-                } else if child.tag_name() == "revision".into() {
-                    let txt = child.children().find(|ch| ch.tag_name() == "text".into()).unwrap();
-                    page.set_content(txt.text().unwrap());
-                }
+    if node.is_element() && node.tag_name() == "page".into() {
+        let mut page = Page::new();
+        for child in node.children() {
+            if child.tag_name() == "id".into() {
+                page.set_id(child.text().unwrap().parse().unwrap());
+            } else if child.tag_name() == "title".into() {
+                page.set_title(child.text().unwrap());
+            } else if child.tag_name() == "revision".into() {
+                let txt = child.children().find(|ch| ch.tag_name() == "text".into()).unwrap();
+                page.set_content(txt.text().unwrap());
             }
-            return Ok(page);
         }
+        return Ok(page);
     }
     Err("this was no page".to_string())
 
